@@ -8,6 +8,7 @@ on:
 
 jobs:
   sync:
+    if: ${{ vars.GITEE_REPO_URL != '' && secrets.GITEE_SSH_PRIVATE_KEY != '' }}
     runs-on: ubuntu-latest
     name: Sync Repository
     steps:
