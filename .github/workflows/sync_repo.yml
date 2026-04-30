@@ -8,23 +8,37 @@ on:
 
 jobs:
   sync:
-    if: ${{ vars.GITEE_REPO_URL != '' && secrets.GITEE_SSH_PRIVATE_KEY != '' }}
     runs-on: ubuntu-latest
     name: Sync Repository
+    env:
+      GITEE_REPO_URL: ${{ vars.GITEE_REPO_URL }}
+      GITEE_SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
     steps:
+      - name: Check sync settings
+        id: sync-settings
+        run: |
+          if [ -n "$GITEE_REPO_URL" ] && [ -n "$GITEE_SSH_PRIVATE_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.sync-settings.outputs.enabled == 'true'
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup SSH
+        if: steps.sync-settings.outputs.enabled == 'true'
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.GITEE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "$GITEE_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
 
       - name: Create single commit and push
+        if: steps.sync-settings.outputs.enabled == 'true'
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
@@ -35,5 +49,5 @@ jobs:
           git commit -m "Sync from GitHub: $(date)"
 
           # Add Gitee remote and force push
-          git remote add gitee ${{ vars.GITEE_REPO_URL }}
+          git remote add gitee "$GITEE_REPO_URL"
           git push --force gitee new-main:main
