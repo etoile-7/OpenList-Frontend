@@ -43,6 +43,9 @@ jobs:
         with:
           run_install: false
 
+      - name: Use HTTPS for GitHub dependencies
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - name: Build Pre-release
         run: |
           chmod +x build.sh

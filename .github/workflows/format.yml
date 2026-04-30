@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: 24.15.0
 
+      - name: Use HTTPS for GitHub dependencies
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - name: Install dependencies
         run: pnpm install
 
