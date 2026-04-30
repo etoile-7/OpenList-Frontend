@@ -82,6 +82,14 @@ export default defineConfig({
               dest: "static/libass-wasm",
             },
             {
+              src: "node_modules/@ffmpeg/core/dist/esm/*",
+              dest: "static/ffmpeg-core",
+            },
+            {
+              src: "node_modules/@ffmpeg/core-mt/dist/esm/*",
+              dest: "static/ffmpeg-core-mt",
+            },
+            {
               src: "src/components/artplayer-plugin-ass/fonts/*",
               dest: "static/fonts",
             },

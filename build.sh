@@ -164,7 +164,8 @@ build_project() {
 # Fetch i18n files from release if skip-i18n flag is set
 fetch_i18n_from_release() {
     log_warning "Skipping i18n build step, try to fetch from GitHub release"
-    release_response=$(curl -s "https://api.github.com/repos/OpenListTeam/OpenList-Frontend/releases/tags/$git_version")
+    release_repo="${OPENLIST_FRONTEND_RELEASE_REPO:-etoile-7/OpenList-Frontend}"
+    release_response=$(curl -s "https://api.github.com/repos/$release_repo/releases/tags/$git_version")
     if echo -n "$release_response" | grep -q "Not Found"; then
         log_warning "Failed to fetch release info. Skipping i18n fetch."
     else

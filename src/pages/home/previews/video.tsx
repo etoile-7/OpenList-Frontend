@@ -15,6 +15,7 @@ import mpegts from "mpegts.js"
 import Hls from "hls.js"
 import { currentLang } from "~/app/i18n"
 import { AutoHeightPlugin, VideoBox } from "./video_box"
+import { VideoEditorPanel } from "./video_editor/VideoEditorPanel"
 import { ArtPlayerIconsSubtitle } from "~/components/icons"
 import { useNavigate } from "@solidjs/router"
 import "./artplayer.css"
@@ -23,6 +24,8 @@ const Preview = () => {
   const { pathname, searchParams } = useRouter()
   const { proxyLink } = useLink()
   const navigate = useNavigate()
+  const [currentTime, setCurrentTime] = createSignal(0)
+  const [duration, setDuration] = createSignal(0)
   const videos = createMemo(() =>
     objStore.objs.filter((obj) => obj.type === ObjType.VIDEO),
   )
@@ -305,6 +308,14 @@ const Preview = () => {
     }
     player.on("ready", () => {
       player.fullscreen = auto_fullscreen
+      setCurrentTime(player.currentTime || 0)
+      setDuration(player.duration || player.video.duration || 0)
+    })
+    player.on("video:timeupdate", () => {
+      setCurrentTime(player.currentTime || player.video.currentTime || 0)
+    })
+    player.on("video:durationchange", () => {
+      setDuration(player.duration || player.video.duration || 0)
     })
     if (danmu) {
       player.on("artplayerPluginDanmuku:config", (option) => {
@@ -357,9 +368,33 @@ const Preview = () => {
     hlsPlayer?.destroy()
   })
   const [autoNext, setAutoNext] = createSignal()
+  const seek = (time: number) => {
+    if (!player) return
+    player.currentTime = Math.max(0, time)
+    setCurrentTime(player.currentTime || time)
+  }
   return (
     <VideoBox onAutoNextChange={setAutoNext}>
-      <Box w="$full" h="60vh" id="video-player" />
+      <Box class="video-editor-layout">
+        <Box class="video-editor-player">
+          <Box w="$full" h="60vh" id="video-player" />
+        </Box>
+        <VideoEditorPanel
+          videoName={objStore.obj.name}
+          videoProxyUrl={proxyLink(objStore.obj, true)}
+          videoSize={objStore.obj.size}
+          videoModified={objStore.obj.modified}
+          danmakuUrl={danmu ? proxyLink(danmu, true) : undefined}
+          subtitleFiles={subtitle.map((item) => ({
+            name: item.name,
+            url: proxyLink(item, true),
+            format: ext(item.name).toLowerCase() as "srt" | "vtt" | "ass",
+          }))}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seek}
+        />
+      </Box>
     </VideoBox>
   )
 }

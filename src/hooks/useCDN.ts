@@ -43,6 +43,18 @@ export const useCDN = () => {
       : `${static_path}/libass-wasm`
   }
 
+  const ffmpegCorePath = () => {
+    return import.meta.env.VITE_LITE === "true"
+      ? npm("@ffmpeg/core", "0.12.10", "dist/esm")
+      : `${static_path}/ffmpeg-core`
+  }
+
+  const ffmpegCoreMtPath = () => {
+    return import.meta.env.VITE_LITE === "true"
+      ? npm("@ffmpeg/core-mt", "0.12.10", "dist/esm")
+      : `${static_path}/ffmpeg-core-mt`
+  }
+
   const fontsPath = () => {
     return import.meta.env.VITE_LITE === "true"
       ? npm(packageJson.name, packageJson.version, "dist/static/fonts")
@@ -56,6 +68,8 @@ export const useCDN = () => {
     mermaidJSPath,
     libHeifPath,
     libAssPath,
+    ffmpegCorePath,
+    ffmpegCoreMtPath,
     fontsPath,
   }
 }

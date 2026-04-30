@@ -46,7 +46,7 @@ jobs:
       - name: Build Pre-release
         run: |
           chmod +x build.sh
-          ./build.sh --dev --compress
+          ./build.sh --dev --compress --skip-i18n
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
