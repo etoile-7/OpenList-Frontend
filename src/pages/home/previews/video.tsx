@@ -377,7 +377,7 @@ const Preview = () => {
     <VideoBox onAutoNextChange={setAutoNext}>
       <Box class="video-editor-layout">
         <Box class="video-editor-player">
-          <Box w="$full" h="60vh" id="video-player" />
+          <Box w="$full" id="video-player" class="video-editor-player-box" />
         </Box>
         <VideoEditorPanel
           videoName={objStore.obj.name}

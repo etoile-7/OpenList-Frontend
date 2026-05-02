@@ -1,21 +1,31 @@
 .video-editor-layout {
-  display: flex;
+  display: grid;
   width: 100%;
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 12px;
+  gap: 14px;
 }
 
 .video-editor-player {
   min-width: 0;
-  flex: 1 1 auto;
+  width: 100%;
+}
+
+.video-editor-player-box {
+  width: 100%;
+  height: min(72vh, calc((100vw - 64px) * 0.5625));
+  min-height: 420px;
+  max-height: calc(100vh - 170px);
+  overflow: hidden;
+  border-radius: 6px;
+  background: #000;
 }
 
 .video-editor-panel {
   display: flex;
-  width: min(390px, 34vw);
-  min-width: 340px;
-  max-height: calc(100vh - 112px);
-  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-height: none;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(125, 135, 155, 0.28);
@@ -78,6 +88,12 @@
 .video-editor-panel button:hover {
   border-color: var(--hope-colors-accent9);
   color: var(--hope-colors-accent11);
+}
+
+.video-editor-panel button:disabled,
+.video-editor-panel textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .video-editor-panel input {
@@ -236,7 +252,7 @@
 .video-editor-list,
 .video-editor-segments {
   display: grid;
-  max-height: 38vh;
+  max-height: 34vh;
   margin-top: 10px;
   overflow: auto;
   gap: 8px;
@@ -361,9 +377,28 @@
   align-items: stretch;
 }
 
+.video-editor-speech__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-editor-speech__actions span {
+  color: var(--hope-colors-neutral11);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 760px) {
   .video-editor-layout {
     display: block;
+  }
+
+  .video-editor-player-box {
+    height: 56vh;
+    min-height: 240px;
+    max-height: calc(100vh - 160px);
   }
 
   .video-editor-panel {

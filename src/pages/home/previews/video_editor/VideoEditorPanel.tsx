@@ -14,6 +14,11 @@ import { runSegmentExport } from "../clipper/exportPipeline"
 import { getOrBuildFlvIndex } from "../clipper/flvIndexCache"
 import { readFlvSegmentBytes } from "../clipper/flvSegment"
 import { concatMp4Segments, loadFfmpeg } from "../clipper/ffmpeg"
+import {
+  DEFAULT_LOCAL_ASR_MODEL,
+  extractAudioForAsr,
+  transcribeAudioToSubtitles,
+} from "../clipper/localAsr"
 import { probeRange } from "../clipper/rangeReader"
 import { fetchSubtitle, SubtitleFormat } from "../clipper/subtitleParser"
 import { writeAss } from "../clipper/assWriter"
@@ -47,7 +52,9 @@ export const VideoEditorPanel = (props: {
   const [assSize, setAssSize] = createSignal(0)
   const [speechText, setSpeechText] = createSignal("")
   const [speechStatus, setSpeechStatus] = createSignal("")
+  const [recognizingSpeech, setRecognizingSpeech] = createSignal(false)
   const [exporting, setExporting] = createSignal(false)
+  let speechAbortController: AbortController | undefined
   let exportAbortController: AbortController | undefined
 
   const rangeSeconds = createMemo(() =>
@@ -186,6 +193,91 @@ export const VideoEditorPanel = (props: {
     store.setSubtitles((current) => [...current, ...items])
     store.setActiveTab("subtitle")
     setSpeechStatus(`已生成 ${items.length} 条语音字幕`)
+  }
+
+  const recognizeSpeech = async () => {
+    if (recognizingSpeech()) {
+      speechAbortController?.abort()
+      return
+    }
+
+    const range = store.range()
+    const clipDuration = Math.max(0, range.end - range.start)
+    if (clipDuration <= 0) {
+      setSpeechStatus("请先设置有效的剪辑范围")
+      return
+    }
+
+    setRecognizingSpeech(true)
+    speechAbortController = new AbortController()
+    let ffmpegResult: Awaited<ReturnType<typeof loadFfmpeg>> | undefined
+
+    try {
+      const source = {
+        url: props.videoProxyUrl,
+        name: props.videoName,
+        size: props.videoSize,
+        modified: props.videoModified,
+      }
+      setSpeechStatus("正在读取视频片段")
+      const { index } = await getOrBuildFlvIndex({ source })
+      const { bytes: flvBytes, keyframe } = await readFlvSegmentBytes(
+        props.videoProxyUrl,
+        index,
+        range,
+        speechAbortController.signal,
+      )
+
+      setSpeechStatus("正在加载音频处理器")
+      ffmpegResult = await loadFfmpeg({
+        single: ffmpegCorePath(),
+        multi: ffmpegCoreMtPath(),
+      })
+      if (!ffmpegResult.ready || !ffmpegResult.ffmpeg) {
+        throw new Error(ffmpegResult.reason || "FFmpeg.wasm 加载失败")
+      }
+
+      setSpeechStatus("正在提取音频")
+      const audio = await extractAudioForAsr({
+        ffmpeg: ffmpegResult.ffmpeg,
+        inputName: "asr-source.flv",
+        inputData: flvBytes,
+        trimStart: Math.max(0, range.start - (keyframe?.time || 0)),
+        duration: clipDuration,
+        signal: speechAbortController.signal,
+      })
+
+      const items = await transcribeAudioToSubtitles({
+        audio,
+        clipStart: range.start,
+        clipDuration,
+        model: DEFAULT_LOCAL_ASR_MODEL,
+        language: "zh",
+        signal: speechAbortController.signal,
+        onStatus: (_, detail) => detail && setSpeechStatus(detail),
+      })
+
+      if (items.length === 0) {
+        throw new Error("没有识别出字幕")
+      }
+      store.setSubtitles((current) => [...current, ...items])
+      store.setActiveTab("subtitle")
+      setSpeechStatus(`已生成 ${items.length} 条本地识别字幕`)
+    } catch (error) {
+      const aborted =
+        error instanceof DOMException && error.name === "AbortError"
+      setSpeechStatus(
+        aborted
+          ? "已取消语音识别"
+          : error instanceof Error
+            ? error.message
+            : "本地语音识别失败",
+      )
+    } finally {
+      ffmpegResult?.ffmpeg?.terminate()
+      setRecognizingSpeech(false)
+      speechAbortController = undefined
+    }
   }
 
   const saveBlob = (bytes: Uint8Array, fileName: string, type: string) => {
@@ -382,14 +474,31 @@ export const VideoEditorPanel = (props: {
           </Match>
           <Match when={store.activeTab() === "speech"}>
             <section class="video-editor-pane video-editor-speech">
+              <div class="video-editor-speech__actions">
+                <button
+                  type="button"
+                  disabled={exporting()}
+                  onClick={recognizeSpeech}
+                >
+                  {recognizingSpeech() ? "取消识别" : "本地识别当前片段"}
+                </button>
+                <span>{DEFAULT_LOCAL_ASR_MODEL}</span>
+              </div>
               <textarea
                 placeholder="粘贴 ASR（语音识别）文本，每行生成一条 3 秒字幕"
                 value={speechText()}
                 onInput={(e) => setSpeechText(e.currentTarget.value)}
+                disabled={recognizingSpeech()}
               />
-              <button type="button" onClick={addSpeechTranscript}>
-                生成语音字幕
-              </button>
+              <div class="video-editor-speech__actions">
+                <button
+                  type="button"
+                  disabled={recognizingSpeech()}
+                  onClick={addSpeechTranscript}
+                >
+                  从文本生成字幕
+                </button>
+              </div>
               <Show when={speechStatus()}>
                 <p class="video-editor-note">{speechStatus()}</p>
               </Show>
